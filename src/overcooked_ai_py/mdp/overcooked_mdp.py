@@ -1445,31 +1445,84 @@ class OvercookedGridworld(object):
             [0] * self.num_players,
         )
 
-        # From HSP   
-        # TODO: check https://github.com/samjia2000/HSP/blob/main/hsp/envs/overcooked/overcooked_ai_py/mdp/overcooked_mdp.py to full in those shpaed info     
+        # Reward shaping events
+        # From HSP https://github.com/samjia2000/HSP/blob/main/hsp/envs/overcooked_new/src/overcooked_ai_py/mdp/overcooked_mdp.py
+        # TODO: 
         shaped_info = [{
             "put_onion_on_X": 0,
-            # "put_tomato_on_X": 0,
+            "put_tomato_on_X": 0,
             "put_dish_on_X": 0,
             "put_soup_on_X": 0,
             "pickup_onion_from_X": 0,
             "pickup_onion_from_O": 0,
-            # "pickup_tomato_from_X": 0,
-            # "pickup_tomato_from_T": 0,
+            "pickup_tomato_from_X": 0,
+            "pickup_tomato_from_T": 0,
             "pickup_dish_from_X": 0,
             "pickup_dish_from_D": 0,
             "pickup_soup_from_X": 0,
             "USEFUL_DISH_PICKUP": 0, # counted when #taken_dishes < #cooking_pots + #partially_full_pots and no dishes on the counter
             "SOUP_PICKUP": 0, # counted when soup in the pot is picked up (not a soup placed on the table)
             "PLACEMENT_IN_POT": 0, # counted when some ingredient is put into pot
+            "viable_placement": 0,
+            "optimal_placement": 0,
+            "catastrophic_placement": 0,
+            "useless_placement": 0,
+            "potting_onion": 0,
+            "potting_tomato": 0,
             "delivery": 0,
+            "delivery_mix": 0,
+            "delivery_onion": 0,
+            "delivery_tomato": 0,
+            "first_tomato": 0,
+            "follow_tomato": 0,
+            "useful_tomato_pickup": 0,
+            "useless_tomato_pickup": 0,
+            "clockwise_net_from_top": 0,
+            "clockwise_net_from_bottom": 0,
+            "clockwise_net_from_right": 0,
+            "clockwise_net_from_left": 0,
         } for _ in range(self.num_players)]
 
         for player_idx, (player, action) in enumerate(
             zip(new_state.players, joint_action)
         ):
-            if action != Action.INTERACT:
+            # Count when the agent finishes a (net) clockwise circle 
+            if action in Direction.ALL_DIRECTIONS:
+                pos = player.position
+                new_pos = Action.move_in_direction(pos, action)
+                terrain_type = self.get_terrain_type_at_pos(new_pos)
+                if terrain_type == " ":
+                    grid_height, grid_weight = len(self.terrain_mtx), len(self.terrain_mtx[0])
+                    grid_center_row, grid_center_col = grid_height // 2, grid_weight // 2
+                    pos_col, pos_row = pos
+                    new_pos_col, new_pos_row = new_pos
+                    
+                    if (pos_col, new_pos_col) == (grid_center_col - 1, grid_center_col):
+                        left_to_right_cross_line_sign = 1
+                    elif (pos_col, new_pos_col) == (grid_center_col, grid_center_col - 1):
+                        left_to_right_cross_line_sign = -1
+                    else:
+                        left_to_right_cross_line_sign = 0
+                    if pos_row < grid_center_row:
+                        shaped_info[player_idx]["clockwise_net_from_top"] += left_to_right_cross_line_sign
+                    else:
+                        shaped_info[player_idx]["clockwise_net_from_bottom"] -= left_to_right_cross_line_sign
+                    
+                    if (pos_row, new_pos_row) == (grid_center_row - 1, grid_center_row):
+                        up_to_down_cross_line_sign = 1
+                    elif (pos_row, new_pos_row) == (grid_center_row, grid_center_row - 1):
+                        up_to_down_cross_line_sign = -1
+                    else:
+                        up_to_down_cross_line_sign = 0
+                    if pos_col < grid_center_col:
+                        shaped_info[player_idx]["clockwise_net_from_left"] -= up_to_down_cross_line_sign
+                    else:
+                        shaped_info[player_idx]["clockwise_net_from_right"] += up_to_down_cross_line_sign
+
+            if action != Action.INTERACT:              
                 continue
+
+            USEFUL_TOMATO_PICKUP = self._shaped_info_useful_tomato_pickup(new_state, player_idx)
 
             pos, o = player.position, player.orientation
             i_pos = Action.move_in_direction(pos, o)
@@ -1480,7 +1533,6 @@ class OvercookedGridworld(object):
             if terrain_type == "X":
                 if player.has_object() and not new_state.has_object(i_pos):
                     obj_name = player.get_object().name
-                    # TODO: HSP: shaped_info[player_idx][f"put_{player.get_object().name}_on_X"] += 1
                     self.log_object_drop(
                         events_infos,
                         new_state,
@@ -1488,6 +1540,7 @@ class OvercookedGridworld(object):
                         pot_states,
                         player_idx,
                     )
+                    shaped_info[player_idx][f"put_{obj_name}_on_X"] += 1
 
                     # Drop object on counter
                     obj = player.remove_object()
@@ -1502,6 +1555,7 @@ class OvercookedGridworld(object):
                         pot_states,
                         player_idx,
                     )
+                    shaped_info[player_idx][f"pickup_{obj_name}_from_X"] += 1
 
                     # Pick up object from counter
                     obj = new_state.remove_object(i_pos)
@@ -1511,25 +1565,37 @@ class OvercookedGridworld(object):
                 self.log_object_pickup(
                     events_infos, new_state, "onion", pot_states, player_idx
                 )
+                shaped_info[player_idx][f"pickup_onion_from_O"] += 1
 
                 # Onion pickup from dispenser
                 obj = ObjectState("onion", pos)
                 player.set_object(obj)
 
             elif terrain_type == "T" and player.held_object is None:
+                self.log_object_pickup(
+                    events_infos, new_state, "tomato", pot_states, player_idx
+                )
+                shaped_info[player_idx][f"pickup_tomato_from_T"] += 1
+                
+                if self.layout_name == 'far_tomato':
+                    raise NotImplementedError # See https://github.com/samjia2000/HSP/blob/main/hsp/envs/overcooked_new/src/overcooked_ai_py/mdp/overcooked_mdp.py#L1282
+
                 # Tomato pickup from dispenser
-                player.set_object(ObjectState("tomato", pos))
+                obj = ObjectState("tomato", pos)
+                player.set_object(obj)
 
             elif terrain_type == "D" and player.held_object is None:
                 self.log_object_pickup(
                     events_infos, new_state, "dish", pot_states, player_idx
                 )
+                shaped_info[player_idx][f"pickup_dish_from_D"] += 1
 
                 # Give shaped reward if pickup is useful
                 if self.is_dish_pickup_useful(new_state, pot_states):
                     shaped_reward[player_idx] += self.reward_shaping_params[
                         "DISH_PICKUP_REWARD"
                     ]
+                    shaped_info[player_idx][f"USEFUL_DISH_PICKUP"] += 1
 
                 # Perform dish pickup from dispenser
                 obj = ObjectState("dish", pos)
@@ -1552,6 +1618,7 @@ class OvercookedGridworld(object):
                     self.log_object_pickup(
                         events_infos, new_state, "soup", pot_states, player_idx
                     )
+                    shaped_info[player_idx][f"SOUP_PICKUP"] += 1
 
                     # Pick up soup
                     player.remove_object()  # Remove the dish
@@ -1578,6 +1645,17 @@ class OvercookedGridworld(object):
                             player_idx
                         ] += self.reward_shaping_params["PLACEMENT_IN_POT_REW"]
 
+                        shaped_info[player_idx][f"PLACEMENT_IN_POT"] += 1
+                        if self.is_potting_optimal(new_state, old_soup, soup):
+                            shaped_info[player_idx][f"optimal_placement"] += 1
+                        if self.is_potting_viable(new_state, old_soup, soup):
+                            shaped_info[player_idx][f"viable_placement"] += 1
+                        if self.is_potting_catastrophic(new_state, old_soup, soup):
+                            shaped_info[player_idx][f"catastrophic_placement"] += 1
+                        if self.is_potting_useless(new_state, old_soup, soup):
+                            shaped_info[player_idx][f"useless_placement"] += 1
+                        shaped_info[player_idx][f"potting_{obj.name}"] += 1
+
                         # Log potting
                         self.log_object_potting(
                             events_infos,
@@ -1596,11 +1674,53 @@ class OvercookedGridworld(object):
                     delivery_rew = self.deliver_soup(new_state, player, obj)
                     sparse_reward[player_idx] += delivery_rew
 
+                    shaped_info[player_idx]["delivery"] += 1
+                    order_name = "mix"
+                    if all([x == "onion" for x in obj.ingredients]):
+                        order_name="onion"
+                    elif all([x == "tomato" for x in obj.ingredients]):
+                        order_name="tomato"
+                    shaped_info[player_idx][f"delivery_{order_name}"] += 1
+
                     # Log soup delivery
                     events_infos["soup_delivery"][player_idx] = True
 
         return sparse_reward, shaped_reward, shaped_info
 
+    def _shaped_info_can_begin_cook_soup(self, state, player_idx):
+        player = state.players[player_idx]
+        
+        pos, o = player.position, player.orientation
+        i_pos = Action.move_in_direction(pos, o)
+        terrain_type = self.get_terrain_type_at_pos(i_pos)
+
+        if terrain_type == 'P' and not player.has_object():
+            if state.has_object(i_pos):
+                soup = state.get_object(i_pos)
+                if soup.is_full and self.soup_to_be_cooked_at_location(state, i_pos):
+                    return True
+        return False
+    
+    def _shaped_info_exists_unfull_tomato_soup(self, state):
+        soup_sizes = []
+        for obj in state.objects.values():
+            if obj.name == 'soup' and not obj.is_full and all([x == "tomato" for x in obj.ingredients]) and len(obj.ingredients) >= 1:
+                soup_sizes.append(len(obj.ingredients))
+        if len(soup_sizes) > 0:
+            return True, soup_sizes
+        return False, []
+    
+    def _shaped_info_useful_tomato_pickup(self, state, pid):
+        # there is an unfull tomato soup
+        useful, soup_sizes = self._shaped_info_exists_unfull_tomato_soup(state)
+        # other player doesn't hold tomato when every soup has two tomatoes
+        if len(soup_sizes) > 0 and all([x == 2 for x in soup_sizes]):
+            for player_idx, player in enumerate(state.players):
+                if pid == player_idx:
+                    continue
+                useful = useful and (not (player.has_object() and player.get_object().name == "tomato"))
+        return useful
+    
     def get_recipe_value(
         self,
         state,
