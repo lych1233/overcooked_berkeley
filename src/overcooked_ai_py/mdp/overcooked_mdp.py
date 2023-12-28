@@ -1408,7 +1408,9 @@ class OvercookedGridworld(object):
         assert new_state.player_orientations == state.player_orientations
 
         # Resolve player movements
-        self.resolve_movement(new_state, joint_action)
+        movement_info_by_agent = self.resolve_movement(new_state, joint_action)
+        for i in range(self.num_players):
+            shaped_info_by_agent[i].update(movement_info_by_agent[i])
 
         # Finally, environment effects
         self.step_environment_effects(new_state)
@@ -1447,7 +1449,6 @@ class OvercookedGridworld(object):
 
         # Reward shaping events
         # From HSP https://github.com/samjia2000/HSP/blob/main/hsp/envs/overcooked_new/src/overcooked_ai_py/mdp/overcooked_mdp.py
-        # TODO: 
         shaped_info = [{
             "put_onion_on_X": 0,
             "put_tomato_on_X": 0,
@@ -1477,48 +1478,11 @@ class OvercookedGridworld(object):
             "follow_tomato": 0,
             "useful_tomato_pickup": 0,
             "useless_tomato_pickup": 0,
-            "clockwise_net_from_top": 0,
-            "clockwise_net_from_bottom": 0,
-            "clockwise_net_from_right": 0,
-            "clockwise_net_from_left": 0,
         } for _ in range(self.num_players)]
 
         for player_idx, (player, action) in enumerate(
             zip(new_state.players, joint_action)
         ):
-            # Count when the agent finishes a (net) clockwise circle 
-            if action in Direction.ALL_DIRECTIONS:
-                pos = player.position
-                new_pos = Action.move_in_direction(pos, action)
-                terrain_type = self.get_terrain_type_at_pos(new_pos)
-                if terrain_type == " ":
-                    grid_height, grid_weight = len(self.terrain_mtx), len(self.terrain_mtx[0])
-                    grid_center_row, grid_center_col = grid_height // 2, grid_weight // 2
-                    pos_col, pos_row = pos
-                    new_pos_col, new_pos_row = new_pos
-                    
-                    if (pos_col, new_pos_col) == (grid_center_col - 1, grid_center_col):
-                        left_to_right_cross_line_sign = 1
-                    elif (pos_col, new_pos_col) == (grid_center_col, grid_center_col - 1):
-                        left_to_right_cross_line_sign = -1
-                    else:
-                        left_to_right_cross_line_sign = 0
-                    if pos_row < grid_center_row:
-                        shaped_info[player_idx]["clockwise_net_from_top"] += left_to_right_cross_line_sign
-                    else:
-                        shaped_info[player_idx]["clockwise_net_from_bottom"] -= left_to_right_cross_line_sign
-                    
-                    if (pos_row, new_pos_row) == (grid_center_row - 1, grid_center_row):
-                        up_to_down_cross_line_sign = 1
-                    elif (pos_row, new_pos_row) == (grid_center_row, grid_center_row - 1):
-                        up_to_down_cross_line_sign = -1
-                    else:
-                        up_to_down_cross_line_sign = 0
-                    if pos_col < grid_center_col:
-                        shaped_info[player_idx]["clockwise_net_from_left"] -= up_to_down_cross_line_sign
-                    else:
-                        shaped_info[player_idx]["clockwise_net_from_right"] += up_to_down_cross_line_sign
-
             if action != Action.INTERACT:              
                 continue
 
@@ -1786,6 +1750,18 @@ class OvercookedGridworld(object):
 
     def resolve_movement(self, state, joint_action):
         """Resolve player movement and deal with possible collisions"""
+        # Movement shaped info
+        movement_info = [{
+            "net_clockwise_move_from_top": 0,
+            "net_clockwise_move_from_bottom": 0,
+            "net_clockwise_move_from_right": 0,
+            "net_clockwise_move_from_left": 0,
+            "num_movement": 0,
+        } for _ in range(self.num_players)]
+        old_positions = [
+            player.position for player in state.players
+        ]
+
         (
             new_positions,
             new_orientations,
@@ -1796,6 +1772,37 @@ class OvercookedGridworld(object):
             state.players, new_positions, new_orientations
         ):
             player_state.update_pos_and_or(new_pos, new_o)
+        
+        grid_height, grid_weight = len(self.terrain_mtx), len(self.terrain_mtx[0])
+        grid_center_row, grid_center_col = grid_height // 2, grid_weight // 2    
+        for player_idx, (old_pos, new_pos) in enumerate(zip(old_positions, new_positions)):
+            old_pos_col, old_pos_row = old_pos
+            new_pos_col, new_pos_row = new_pos
+            if old_pos != new_pos:
+                movement_info[player_idx]["num_movement"] += 1
+            if (old_pos_col, new_pos_col) == (grid_center_col - 1, grid_center_col):
+                left_to_right_cross_line_sign = 1
+            elif (old_pos_col, new_pos_col) == (grid_center_col, grid_center_col - 1):
+                left_to_right_cross_line_sign = -1
+            else:
+                left_to_right_cross_line_sign = 0
+            if old_pos_row < grid_center_row:
+                movement_info[player_idx]["net_clockwise_move_from_top"] += left_to_right_cross_line_sign
+            else:
+                movement_info[player_idx]["net_clockwise_move_from_bottom"] -= left_to_right_cross_line_sign
+            
+            if (old_pos_row, new_pos_row) == (grid_center_row - 1, grid_center_row):
+                up_to_down_cross_line_sign = 1
+            elif (old_pos_row, new_pos_row) == (grid_center_row, grid_center_row - 1):
+                up_to_down_cross_line_sign = -1
+            else:
+                up_to_down_cross_line_sign = 0
+            if old_pos_col < grid_center_col:
+                movement_info[player_idx]["net_clockwise_move_from_left"] -= up_to_down_cross_line_sign
+            else:
+                movement_info[player_idx]["net_clockwise_move_from_right"] += up_to_down_cross_line_sign
+
+        return movement_info
 
     def compute_new_positions_and_orientations(
         self, old_player_states, joint_action
