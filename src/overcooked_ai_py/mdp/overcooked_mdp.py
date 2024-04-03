@@ -2590,6 +2590,7 @@ class OvercookedGridworld(object):
                 + variable_map_features
                 + urgency_features
             )
+            # print("LAYERS", LAYERS)
             state_mask_dict = {k: np.zeros(self.shape) for k in LAYERS}
 
             # MAP LAYERS
@@ -2629,12 +2630,16 @@ class OvercookedGridworld(object):
                 ] = make_layer(player.position, 1)
 
             # OBJECT & STATE LAYERS
+            # print()
             for obj in all_objects:
+                # print(obj.name, obj.position)
                 if obj.name == "soup":
                     # removed the next line because onion doesn't have to be in all the soups?
                     # if Recipe.ONION in obj.ingredients:
                     # get the ingredients into a {object: number} dictionary
                     ingredients_dict = Counter(obj.ingredients)
+                    # print('ingredients_dict["onion"]', ingredients_dict["onion"])
+                    # print("obj.is_idle", obj.is_idle)
                     # assert "onion" in ingredients_dict.keys()
                     if obj.position in self.get_pot_locations():
                         if obj.is_idle:
@@ -2655,7 +2660,7 @@ class OvercookedGridworld(object):
                             state_mask_dict[
                                 "soup_cook_time_remaining"
                             ] += make_layer(
-                                obj.position, obj.cook_time - obj._cooking_tick
+                                obj.position, obj._cooking_tick # obj.cook_time - obj._cooking_tick
                             )
                             if obj.is_ready:
                                 state_mask_dict["soup_done"] += make_layer(
