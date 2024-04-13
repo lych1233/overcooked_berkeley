@@ -224,6 +224,7 @@ def joint_state_trajectory_to_single(
     player_indices_to_convert=None,
     featurize_states=True,
     silent=False,
+    use_image_state=False,
     **kwargs
 ):
     """
@@ -253,7 +254,7 @@ def joint_state_trajectory_to_single(
 
             if featurize_states:
                 action = np.array([Action.ACTION_TO_INDEX[action]]).astype(int)
-                state = env.featurize_state_mdp(state)[agent_idx]
+                state = env.lossless_state_encoding_mdp(state)[agent_idx] if use_image_state else env.featurize_state_mdp(state)[agent_idx]
 
             ep_obs.append(state)
             ep_acts.append(action)
