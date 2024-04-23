@@ -29,6 +29,7 @@ def load_pickle(filename):
 
 
 def load_dict_from_file(filepath):
+    print('LAYOUT FILENAME: ', filepath)
     with open(filepath, "r") as f:
         return eval(f.read())
 

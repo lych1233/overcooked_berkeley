@@ -19,6 +19,8 @@ from overcooked_ai_py.planning.planners import (
     MotionPlanner,
 )
 
+import torch
+
 # Relative path to where all static pre-trained agents are stored on server
 AGENT_DIR = None
 
@@ -636,7 +638,7 @@ class OvercookedGame(Game):
         self.score = 0
         self.threads = []
         for npc_policy in self.npc_policies:
-            self.npc_policies[npc_policy].reset()
+            # self.npc_policies[npc_policy].reset()
             self.npc_state_queues[npc_policy].put(self.state)
             t = Thread(target=self.npc_policy_consumer, args=(npc_policy,))
             self.threads.append(t)
@@ -672,24 +674,55 @@ class OvercookedGame(Game):
         return obj_dict
 
     def get_policy(self, npc_id, idx=0):
-        if npc_id.lower().startswith("rllib"):
-            try:
-                # Loading rllib agents requires additional helpers
-                fpath = os.path.join(AGENT_DIR, npc_id, "agent")
-                fix_bc_path(fpath)
-                agent = load_agent(fpath, agent_index=idx)
-                return agent
-            except Exception as e:
-                raise IOError(
-                    "Error loading Rllib Agent\n{}".format(e.__repr__())
-                )
-        else:
-            try:
-                fpath = os.path.join(AGENT_DIR, npc_id, "agent.pickle")
-                with open(fpath, "rb") as f:
-                    return pickle.load(f)
-            except Exception as e:
-                raise IOError("Error loading agent\n{}".format(e.__repr__()))
+        # import pdb; pdb.set_trace()
+        import traceback
+        try:
+            # Your code with inner function calls here
+            # For example:
+            def inner_function():
+                # Code that might raise an error
+                if npc_id.lower().startswith("rllib"):
+                    fpath = os.path.join(AGENT_DIR, npc_id, "agent")
+                    print('*!**** AGENT CHECKPOINT FILEPATH: *****', fpath)
+                    # fix_bc_path(fpath)
+
+                    agent = load_agent(fpath, agent_index=idx)
+                    return agent
+                else: # Should go into the else statement here
+                    actor_filepath = '/home/daphne/Desktop/UW/research/dev/mapbt/mapbt/scripts/results/actor.pt'
+                    actor_agent = torch.load(actor_filepath)
+                    return actor_agent
+                    # fpath = os.path.join(AGENT_DIR, npc_id, "agent.pickle")
+                    # print('*!**** AGENT CHECKPOINT FILEPATH: *****', fpath)
+                    # with open(fpath, "rb") as f:
+                    #     return pickle.load(f)
+                raise ValueError("An error occurred in inner_function")
+            inner_function()
+        except Exception as e:
+            # Use traceback to print detailed information about the error
+            traceback.print_exc()
+
+        # if npc_id.lower().startswith("rllib"):
+        #     # try:
+        #         # Loading rllib agents requires additional helpers
+        #     fpath = os.path.join(AGENT_DIR, npc_id, "agent")
+        #     print('*!**** AGENT CHECKPOINT FILEPATH: *****', fpath)
+        #     fix_bc_path(fpath)
+
+        #     agent = load_agent(fpath, agent_index=idx)
+        #     return agent
+        #     # except Exception as e:
+        #     #     raise IOError(
+        #     #         "Error loading Rllib Agent\n{}".format(e.__repr__())
+        #     #     )
+        # else:
+        # #     try:
+        #     fpath = os.path.join(AGENT_DIR, npc_id, "agent.pickle")
+        #     print('*!**** AGENT CHECKPOINT FILEPATH: *****', fpath)
+        #     with open(fpath, "rb") as f:
+        #         return pickle.load(f)
+        #     # except Exception as e:
+        #     #     raise IOError("Error loading agent\n{}".format(e.__repr__()))
 
     def get_data(self):
         """
@@ -955,3 +988,14 @@ class TutorialAI:
     def reset(self):
         self.curr_tick = -1
         self.curr_phase += 1
+
+
+def main():
+    # load_agent()
+    actor_filepath = '/home/daphne/Desktop/UW/research/dev/mapbt/mapbt/scripts/results/actor.pt'
+    actor = torch.load(actor_filepath)
+    print('successfully loaded agent at ', actor_filepath)
+    print('model is ', actor)
+
+if __name__ == '__main__':
+    main()

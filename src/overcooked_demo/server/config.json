@@ -7,12 +7,22 @@
     "MAX_FPS" : 30,
     "predefined" : {
         "experimentParams" : {
-            "layouts" : ["counter_circuit", "cramped_room"],
-            "gameTime" : 5,
+            "layouts" : [
+                "counter_circuit_6x5_2pots_2orders_1L2R",
+                "counter_circuit_6x5_2pots_2orders_1R2L",
+                "counter_circuit_6x5_2pots_2orders_1L2R",
+                "counter_circuit_6x5_2pots_2orders_1R2L",
+                "counter_circuit_6x5_1Lpot_2orders_1R2L",
+                "counter_circuit_6x5_1Rpot_2orders_1L2R",
+                "counter_circuit_6x5_1Lpot_2orders_1R2L",
+                "counter_circuit_6x5_1Rpot_2orders_1L2R"
+            ],
+            "gameTime" : 60,
             "playerZero" : "human",
             "playerOne" : "human",
-            "randomized" : true,
-            "dataCollection": "on"
+            "randomized" : false,
+            "dataCollection": "on",
+            "oldDynamics": "on"
         },
         "lobbyWaitTime" : 300000
     },

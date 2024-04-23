@@ -54,6 +54,7 @@ class Action(object):
         v for v in itertools.product(range(len(INDEX_TO_ACTION)), repeat=2)
     ]
     ACTION_TO_INDEX = {a: i for i, a in enumerate(INDEX_TO_ACTION)}
+    import pdb; pdb.set_trace()
     MOTION_ACTIONS = Direction.ALL_DIRECTIONS + [STAY]
     ACTION_TO_CHAR = {
         Direction.NORTH: "↑",

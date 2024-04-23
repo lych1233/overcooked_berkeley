@@ -4,9 +4,23 @@ var socket = io();
 
 var config;
 var experimentParams = {
-    layouts : ["cramped_room", "counter_circuit"],
-    gameTime : 10,
-    playerZero : "DummyAI"
+    // layouts : ["cramped_room", "counter_circuit"],
+    layouts: [
+        "counter_circuit_6x5_2pots_2orders_1L2R",
+        "counter_circuit_6x5_2pots_2orders_1R2L",
+        "counter_circuit_6x5_2pots_2orders_1L2R",
+        "counter_circuit_6x5_2pots_2orders_1R2L",
+        "counter_circuit_6x5_1Lpot_2orders_1R2L",
+        "counter_circuit_6x5_1Rpot_2orders_1L2R",
+        "counter_circuit_6x5_1Lpot_2orders_1R2L",
+        "counter_circuit_6x5_1Rpot_2orders_1L2R"
+    ],
+    gameTime : 480, // 10
+    playerZero : "human",
+    playerOne : "human",
+    randomized : false,
+    dataCollection: "on",
+    oldDynamics: "on"
 };
 
 var lobbyWaitTime = 300000;

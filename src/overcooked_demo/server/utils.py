@@ -2,7 +2,7 @@ import os
 from threading import Lock
 
 # this is the mounted volume
-DOCKER_VOLUME = "/app/data"
+DOCKER_VOLUME = "/app/data/TESTING"
 
 
 class ThreadSafeSet(set):

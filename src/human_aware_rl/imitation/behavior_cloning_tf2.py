@@ -60,7 +60,7 @@ DEFAULT_EVALUATION_PARAMS = {
 
 DEFAULT_BC_PARAMS = {
     "eager": True,
-    "use_lstm": False,
+    "use_lstm": True,
     "cell_size": 256,
     "data_params": DEFAULT_DATA_PARAMS,
     "mdp_params": {"layout_name": "cramped_room", "old_dynamics": False},

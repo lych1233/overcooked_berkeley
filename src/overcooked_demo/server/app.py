@@ -1,3 +1,6 @@
+# import pdb; pdb.set_trace()
+# print('****** MADE IT HERE ************')
+
 import os
 import sys
 
@@ -345,6 +348,7 @@ def _ensure_consistent_state():
 
 
 def get_agent_names():
+    # import pdb; pdb.set_trace()
     return [
         d
         for d in os.listdir(AGENT_DIR)

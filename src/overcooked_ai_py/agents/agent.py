@@ -44,6 +44,7 @@ class Agent(object):
 
     @staticmethod
     def a_probs_from_action(action):
+        import pdb; pdb.set_trace()
         action_idx = Action.ACTION_TO_INDEX[action]
         return np.eye(Action.NUM_ACTIONS)[action_idx]
 
