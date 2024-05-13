@@ -7,6 +7,9 @@ HUMAN_DATA_DIR = os.path.join(_curr_directory, "human_data")
 
 # Paths to pre-processed data
 CLEAN_HUMAN_DATA_DIR = os.path.join(HUMAN_DATA_DIR, "cleaned")
+CLEAN_2024_HUMAN_DATA_ALL = os.path.join(
+    CLEAN_HUMAN_DATA_DIR, "2024_hh_trials_all.pickle"
+)
 CLEAN_2020_HUMAN_DATA_ALL = os.path.join(
     CLEAN_HUMAN_DATA_DIR, "2020_hh_trials_all.pickle"
 )
@@ -119,3 +122,4 @@ LAYOUTS_WITH_DATA_2020 = set(
 )
 
 LAYOUTS_WITH_DATA = LAYOUTS_WITH_DATA_2019.union(LAYOUTS_WITH_DATA_2020)
+LAYOUTS_WITH_DATA = LAYOUTS_WITH_DATA.union(set(["counter_circuit_6x5_2pots_2orders_1L2R"]))
